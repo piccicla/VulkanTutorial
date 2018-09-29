@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include<vector>
 #include <algorithm> //std::find
+#include<cstring>    //strcmp
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -25,6 +26,17 @@ public:
 private:
 	GLFWwindow * window;
 	VkInstance instance;
+
+	/// validation layers
+	const std::vector<const char*> validationLayers = {
+		"VK_LAYER_LUNARG_standard_validation"  //implicitly enables a whole range of useful diagnostics layers
+	};
+	#ifdef NDEBUG  //enable validation layer only for debug
+		const bool enableValidationLayers = false;
+	#else
+		const bool enableValidationLayers = true;
+	#endif
+	///////////////////
 
 	void initWindow()
 	{
@@ -57,7 +69,16 @@ private:
 
 	void createInstance()
 	{
-		
+		//first check validation layers
+		if (enableValidationLayers && !checkValidationLayerSupport()) {
+			throw std::runtime_error("validation layers requested, but not available!");
+		}
+		if (enableValidationLayers)
+		{
+			std::cout << "--requested validation layers requested are running--" << std::endl;
+		}
+
+
 		////get info about extensions
 		uint32_t extensionCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr); // get number of available extensions
@@ -70,7 +91,7 @@ private:
 		}
 		
 
-		// initialize
+		///////// create instance data
 		VkApplicationInfo appInfo = {};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		appInfo.pApplicationName = "Hello Triangle";
@@ -89,19 +110,29 @@ private:
 
 		createInfo.enabledExtensionCount = glfwExtensionCount;
 		createInfo.ppEnabledExtensionNames = glfwExtensions;
-		createInfo.enabledLayerCount = 0;
 
+		if (enableValidationLayers) {
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames = validationLayers.data();
+		}
+		else {
+			createInfo.enabledLayerCount = 0;
+		}
+		/////////////////
 
 		/////////// are required extension available on this system?
 		std::cout << "glfw required extensions:" << std::endl;
 		for (int i = 0; i < glfwExtensionCount; i++) {
 			std::cout << "\t" << glfwExtensions[i] << std::endl;
 		}
-		checkRequiredExtensionsPresent(extensions, glfwExtensions, glfwExtensionCount);
+		if (!checkRequiredExtensionsPresent(extensions, glfwExtensions, glfwExtensionCount))
+		{
+			throw std::runtime_error("missing vulkan extensions");
+		}
 		////////////
 
 
-		// finally we can create the instance.....
+		///////// finally we can create the instance.....
 		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create instance!");
 		}
@@ -109,21 +140,54 @@ private:
 	}
 
 	/*check if required extension available on this system*/
-	void checkRequiredExtensionsPresent(std::vector<VkExtensionProperties> availableExt, const char** requiredExt, int requiredExtCount)
+	bool checkRequiredExtensionsPresent(std::vector<VkExtensionProperties> availableExt, const char** requiredExt, int requiredExtCount)
 	{
 		for (auto i = 0; i < requiredExtCount; ++i) {
 			bool found = false;
 			for (const auto& extension : availableExt) {
 				if (strcmp(requiredExt[i], extension.extensionName)==0) {
 					found = true;
+					break;
 				}
 			}
 			if (!found) {
-				throw std::runtime_error("missing vulkan extension");
+				return false;
 			}
 		}
 		std::cout << "extension requirement fulfilled" << std::endl;
+		return true;
 	}
+
+	/*
+	check all available validation layers are there
+	*/
+	bool checkValidationLayerSupport()
+	{
+		// first create a vector with available layers
+		uint32_t layerCount;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+		std::vector<VkLayerProperties> availableLayers(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+		for (const char* layerName : validationLayers) {
+			bool layerFound = false;
+
+			for (const auto& layerProperties : availableLayers) {
+				if (strcmp(layerName, layerProperties.layerName) == 0) {
+					layerFound = true;
+					break;
+				}
+			}
+
+			if (!layerFound) {
+				return false;
+			}
+		}
+
+		return true;
+
+	}
+
 };
 
 int main()
