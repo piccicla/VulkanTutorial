@@ -104,12 +104,16 @@ private:
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		createInfo.pApplicationInfo = &appInfo;
 
-		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions;
-		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		//uint32_t glfwExtensionCount = 0;
+		//const char** glfwExtensions;
+		//glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		//createInfo.enabledExtensionCount = glfwExtensionCount;
+		//createInfo.ppEnabledExtensionNames = glfwExtensions;
 
-		createInfo.enabledExtensionCount = glfwExtensionCount;
-		createInfo.ppEnabledExtensionNames = glfwExtensions;
+		auto extnsions = getRequiredExtensions();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(extnsions.size());
+		createInfo.ppEnabledExtensionNames = extnsions.data();
+
 
 		if (enableValidationLayers) {
 			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -121,14 +125,14 @@ private:
 		/////////////////
 
 		/////////// are required extension available on this system?
-		std::cout << "glfw required extensions:" << std::endl;
+		/*std::cout << "glfw required extensions:" << std::endl;
 		for (int i = 0; i < glfwExtensionCount; i++) {
 			std::cout << "\t" << glfwExtensions[i] << std::endl;
 		}
 		if (!checkRequiredExtensionsPresent(extensions, glfwExtensions, glfwExtensionCount))
 		{
 			throw std::runtime_error("missing vulkan extensions");
-		}
+		}*/
 		////////////
 
 
@@ -187,6 +191,26 @@ private:
 		return true;
 
 	}
+
+	/*
+	return the required list of extensions based on whether validation layers are enabled or not
+	*/
+	std::vector<const char*> getRequiredExtensions()
+	{
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions;
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+		if (enableValidationLayers) {
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+		return extensions;
+	}
+
+
 
 };
 
